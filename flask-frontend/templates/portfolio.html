@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}Portfolio - FinanceAI{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div>
+            <h1>My Portfolio</h1>
+            <p style="color: var(--text-secondary);">Track your investments and performance</p>
+        </div>
+        <button class="btn btn-primary" onclick="showAddHoldingModal()">
+            <i class="fas fa-plus"></i> Add Holding
+        </button>
+    </div>
+
+    <!-- Portfolio Summary -->
+    <div class="grid grid-cols-4 mb-4">
+        <div class="stat-card">
+            <div class="stat-label">Total Value</div>
+            <div class="stat-value" id="totalValue">Rs.0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Total Invested</div>
+            <div class="stat-value" id="totalInvested">Rs.0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Total Returns</div>
+            <div class="stat-value" id="totalReturns">Rs.0</div>
+            <div class="stat-change" id="returnsPercent">0%</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Holdings</div>
+            <div class="stat-value" id="holdingsCount">0</div>
+        </div>
+    </div>
+
+    <!-- Holdings Table -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Holdings</h3>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Asset</th>
+                        <th>Type</th>
+                        <th>Quantity</th>
+                        <th>Purchase Price</th>
+                        <th>Current Price</th>
+                        <th>Current Value</th>
+                        <th>Returns</th>
+                        <th>Returns %</th>
+                    </tr>
+                </thead>
+                <tbody id="holdingsTable"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add Holding Modal -->
+<div id="addHoldingModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="card" style="max-width: 600px; width: 90%;">
+        <div class="card-header">
+            <h3 class="card-title">Add Holding</h3>
+            <button onclick="hideAddHoldingModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        </div>
+        <form id="addHoldingForm">
+            <div class="form-group">
+                <label class="form-label">Symbol/Ticker</label>
+                <input type="text" class="form-input" id="symbol" required placeholder="RELIANCE or INFY">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Asset Name</label>
+                <input type="text" class="form-input" id="name" required placeholder="Reliance Industries">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Asset Type</label>
+                <select class="form-select" id="assetType" required>
+                    <option value="stock">Stock</option>
+                    <option value="mutual_fund">Mutual Fund</option>
+                    <option value="etf">ETF</option>
+                    <option value="bond">Bond</option>
+                    <option value="crypto">Cryptocurrency</option>
+                    <option value="real_estate">Real Estate</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-2">
+                <div class="form-group">
+                    <label class="form-label">Quantity</label>
+                    <input type="number" class="form-input" id="quantity" required placeholder="10" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Purchase Price</label>
+                    <input type="number" class="form-input" id="purchasePrice" required placeholder="2500" step="0.01">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Purchase Date</label>
+                <input type="date" class="form-input" id="purchaseDate" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg w-full">Add Holding</button>
+        </form>
+    </div>
+</div>
+
+<script>
+async function loadPortfolio() {
+    try {
+        const summary = await apiCall('portfolio/summary');
+
+        document.getElementById('totalValue').textContent = formatCurrency(summary.total_value);
+        document.getElementById('totalInvested').textContent = formatCurrency(summary.total_invested);
+        document.getElementById('totalReturns').textContent = formatCurrency(summary.total_returns);
+        document.getElementById('holdingsCount').textContent = summary.holdings_count;
+
+        const returnsPercent = summary.total_returns_percent || 0;
+        const returnsEl = document.getElementById('returnsPercent');
+        returnsEl.textContent = formatPercentage(returnsPercent);
+        returnsEl.className = 'stat-change ' + (returnsPercent >= 0 ? 'positive' : 'negative');
+
+        // Load holdings
+        const holdings = await apiCall('portfolio/holdings');
+        renderHoldings(holdings);
+    } catch (error) {
+        console.error('Error loading portfolio:', error);
+        showToast('Error loading portfolio', 'error');
+    }
+}
+
+function renderHoldings(holdings) {
+    const tbody = document.getElementById('holdingsTable');
+    tbody.innerHTML = '';
+
+    if (holdings.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: var(--text-tertiary);">No holdings yet. Add your first investment!</td></tr>';
+        return;
+    }
+
+    holdings.forEach(holding => {
+        const returnsClass = holding.returns >= 0 ? 'positive' : 'negative';
+        const row = `
+            <tr>
+                <td><strong>${holding.name}</strong><br><small>${holding.symbol}</small></td>
+                <td><span class="badge badge-primary">${holding.asset_type}</span></td>
+                <td>${holding.quantity}</td>
+                <td>${formatCurrency(holding.purchase_price)}</td>
+                <td>${formatCurrency(holding.current_price)}</td>
+                <td>${formatCurrency(holding.current_value)}</td>
+                <td class="${returnsClass}">${formatCurrency(holding.returns)}</td>
+                <td class="${returnsClass}">${formatPercentage(holding.returns_percent)}</td>
+            </tr>
+        `;
+        tbody.innerHTML += row;
+    });
+}
+
+function showAddHoldingModal() {
+    document.getElementById('addHoldingModal').style.display = 'flex';
+    document.getElementById('purchaseDate').value = new Date().toISOString().split('T')[0];
+}
+
+function hideAddHoldingModal() {
+    document.getElementById('addHoldingModal').style.display = 'none';
+    document.getElementById('addHoldingForm').reset();
+}
+
+document.getElementById('addHoldingForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const holdingData = {
+        symbol: document.getElementById('symbol').value.toUpperCase(),
+        name: document.getElementById('name').value,
+        asset_type: document.getElementById('assetType').value,
+        quantity: parseFloat(document.getElementById('quantity').value),
+        purchase_price: parseFloat(document.getElementById('purchasePrice').value),
+        purchase_date: new Date(document.getElementById('purchaseDate').value).toISOString()
+    };
+
+    try {
+        await apiCall('portfolio/holdings', 'POST', holdingData);
+        showToast('Holding added successfully!', 'success');
+        hideAddHoldingModal();
+        loadPortfolio();
+    } catch (error) {
+        showToast('Error adding holding', 'error');
+    }
+});
+
+loadPortfolio();
+</script>
+{% endblock %}

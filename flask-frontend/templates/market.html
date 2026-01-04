@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+
+{% block title %}Market Data - FinanceAI{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <h1 style="margin-bottom: 0.5rem;">Market Data</h1>
+    <p style="color: var(--text-secondary); margin-bottom: 2rem;">Real-time stock prices and market information</p>
+
+    <!-- Stock Search -->
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3 class="card-title">Search Stock</h3>
+        </div>
+        <div style="display: flex; gap: 1rem;">
+            <input type="text" class="form-input" id="symbolInput" placeholder="Enter symbol (e.g., AAPL, MSFT, GOOGL)" style="flex: 1;">
+            <button class="btn btn-primary" onclick="searchStock()">
+                <i class="fas fa-search"></i> Search
+            </button>
+        </div>
+        <p style="font-size: 0.75rem; color: var(--text-tertiary); margin-top: 0.5rem;">
+            Note: Uses Alpha Vantage API. Free tier allows 25 requests per day.
+        </p>
+    </div>
+
+    <!-- Stock Details -->
+    <div id="stockDetails" style="display: none;">
+        <div class="grid grid-cols-2 gap-3 mb-3">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1.5rem;">
+                    <div>
+                        <h3 id="stockName" style="margin-bottom: 0.25rem;"></h3>
+                        <span id="stockSymbol" class="badge badge-primary"></span>
+                    </div>
+                    <div id="lastUpdated" style="font-size: 0.75rem; color: var(--text-tertiary);"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <div style="color: var(--text-tertiary); font-size: 0.875rem;">Current Price</div>
+                        <div style="font-size: 2.5rem; font-weight: 800;" id="currentPrice">-</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-tertiary); font-size: 0.875rem;">Change</div>
+                        <div style="font-size: 1.5rem; font-weight: 700;" id="priceChange">-</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-4 gap-2 mt-3">
+                    <div>
+                        <div style="color: var(--text-tertiary); font-size: 0.75rem;">Open</div>
+                        <div style="font-weight: 600;" id="openPrice">-</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-tertiary); font-size: 0.75rem;">High</div>
+                        <div style="font-weight: 600;" id="highPrice">-</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-tertiary); font-size: 0.75rem;">Low</div>
+                        <div style="font-weight: 600;" id="lowPrice">-</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-tertiary); font-size: 0.75rem;">Volume</div>
+                        <div style="font-weight: 600;" id="volume">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h4 style="margin-bottom: 1rem;">Company Overview</h4>
+                <div id="companyOverview">
+                    <p style="color: var(--text-tertiary);">Search for a stock to see company details</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- News Section -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h3 class="card-title">Latest News & Sentiment</h3>
+            </div>
+            <div id="newsContainer"></div>
+        </div>
+
+        <!-- AI Analysis -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">AI Investment Analysis</h3>
+                <button class="btn btn-secondary btn-sm" onclick="getAIAnalysis()">
+                    <i class="fas fa-robot"></i> Get Analysis
+                </button>
+            </div>
+            <div id="aiAnalysis">
+                <p style="color: var(--text-tertiary);">Click "Get Analysis" to get AI-powered insights about this stock.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popular Stocks -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Popular Stocks</h3>
+        </div>
+        <div class="grid grid-cols-4 gap-2">
+            <button class="card" onclick="quickSearch('AAPL')" style="cursor: pointer; text-align: center; border: 2px solid var(--border-color);">
+                <h5>Apple</h5>
+                <p style="font-size: 0.75rem; color: var(--text-tertiary);">AAPL</p>
+            </button>
+            <button class="card" onclick="quickSearch('MSFT')" style="cursor: pointer; text-align: center; border: 2px solid var(--border-color);">
+                <h5>Microsoft</h5>
+                <p style="font-size: 0.75rem; color: var(--text-tertiary);">MSFT</p>
+            </button>
+            <button class="card" onclick="quickSearch('GOOGL')" style="cursor: pointer; text-align: center; border: 2px solid var(--border-color);">
+                <h5>Google</h5>
+                <p style="font-size: 0.75rem; color: var(--text-tertiary);">GOOGL</p>
+            </button>
+            <button class="card" onclick="quickSearch('AMZN')" style="cursor: pointer; text-align: center; border: 2px solid var(--border-color);">
+                <h5>Amazon</h5>
+                <p style="font-size: 0.75rem; color: var(--text-tertiary);">AMZN</p>
+            </button>
+            <button class="card" onclick="quickSearch('TSLA')" style="cursor: pointer; text-align: center; border: 2px solid var(--border-color);">
+                <h5>Tesla</h5>
+                <p style="font-size: 0.75rem; color: var(--text-tertiary);">TSLA</p>
+            </button>
+            <button class="card" onclick="quickSearch('META')" style="cursor: pointer; text-align: center; border: 2px solid var(--border-color);">
+                <h5>Meta</h5>
+                <p style="font-size: 0.75rem; color: var(--text-tertiary);">META</p>
+            </button>
+            <button class="card" onclick="quickSearch('NVDA')" style="cursor: pointer; text-align: center; border: 2px solid var(--border-color);">
+                <h5>NVIDIA</h5>
+                <p style="font-size: 0.75rem; color: var(--text-tertiary);">NVDA</p>
+            </button>
+            <button class="card" onclick="quickSearch('JPM')" style="cursor: pointer; text-align: center; border: 2px solid var(--border-color);">
+                <h5>JPMorgan</h5>
+                <p style="font-size: 0.75rem; color: var(--text-tertiary);">JPM</p>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentSymbol = '';
+
+function quickSearch(symbol) {
+    document.getElementById('symbolInput').value = symbol;
+    searchStock();
+}
+
+async function searchStock() {
+    const symbol = document.getElementById('symbolInput').value.trim().toUpperCase();
+
+    if (!symbol) {
+        showToast('Please enter a stock symbol', 'error');
+        return;
+    }
+
+    currentSymbol = symbol;
+    showToast('Loading stock data...', 'info');
+
+    try {
+        const response = await apiCall(`market/${symbol}`);
+
+        document.getElementById('stockDetails').style.display = 'block';
+        document.getElementById('stockSymbol').textContent = symbol;
+
+        // Quote data
+        if (response.quote) {
+            const quote = response.quote;
+            document.getElementById('currentPrice').textContent = '$' + (parseFloat(quote.price) || 0).toFixed(2);
+
+            const change = parseFloat(quote.change) || 0;
+            const changePercent = parseFloat(quote.change_percent) || 0;
+            const changeEl = document.getElementById('priceChange');
+            changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePercent.toFixed(2)}%)`;
+            changeEl.style.color = change >= 0 ? 'var(--success)' : 'var(--danger)';
+
+            document.getElementById('openPrice').textContent = '$' + (parseFloat(quote.open) || 0).toFixed(2);
+            document.getElementById('highPrice').textContent = '$' + (parseFloat(quote.high) || 0).toFixed(2);
+            document.getElementById('lowPrice').textContent = '$' + (parseFloat(quote.low) || 0).toFixed(2);
+            document.getElementById('volume').textContent = parseInt(quote.volume || 0).toLocaleString();
+        }
+
+        // Company overview
+        if (response.overview) {
+            const overview = response.overview;
+            document.getElementById('stockName').textContent = overview.Name || symbol;
+
+            let overviewHtml = '';
+            if (overview.Description) {
+                overviewHtml += `<p style="margin-bottom: 1rem; font-size: 0.875rem;">${overview.Description.substring(0, 300)}...</p>`;
+            }
+            overviewHtml += `
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <div style="color: var(--text-tertiary); font-size: 0.75rem;">Sector</div>
+                        <div style="font-weight: 600;">${overview.Sector || 'N/A'}</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-tertiary); font-size: 0.75rem;">Industry</div>
+                        <div style="font-weight: 600;">${overview.Industry || 'N/A'}</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-tertiary); font-size: 0.75rem;">Market Cap</div>
+                        <div style="font-weight: 600;">${formatMarketCap(overview.MarketCapitalization)}</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-tertiary); font-size: 0.75rem;">P/E Ratio</div>
+                        <div style="font-weight: 600;">${overview.PERatio || 'N/A'}</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-tertiary); font-size: 0.75rem;">Dividend Yield</div>
+                        <div style="font-weight: 600;">${overview.DividendYield ? (parseFloat(overview.DividendYield) * 100).toFixed(2) + '%' : 'N/A'}</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-tertiary); font-size: 0.75rem;">52 Week Range</div>
+                        <div style="font-weight: 600;">$${overview['52WeekLow'] || 'N/A'} - $${overview['52WeekHigh'] || 'N/A'}</div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('companyOverview').innerHTML = overviewHtml;
+        } else {
+            document.getElementById('stockName').textContent = symbol;
+            document.getElementById('companyOverview').innerHTML = '<p style="color: var(--text-tertiary);">Company overview not available</p>';
+        }
+
+        // News
+        if (response.news && response.news.length > 0) {
+            let newsHtml = '';
+            response.news.slice(0, 5).forEach(article => {
+                const sentiment = article.overall_sentiment_label || 'Neutral';
+                const sentimentColor = sentiment.toLowerCase().includes('bullish') ? 'var(--success)' :
+                                      sentiment.toLowerCase().includes('bearish') ? 'var(--danger)' : 'var(--text-tertiary)';
+
+                newsHtml += `
+                    <div style="padding: 1rem; border-bottom: 1px solid var(--border-color);">
+                        <h5 style="margin-bottom: 0.5rem;">${article.title || 'News Article'}</h5>
+                        <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.5rem;">${article.summary ? article.summary.substring(0, 150) + '...' : ''}</p>
+                        <div style="display: flex; gap: 1rem; font-size: 0.75rem;">
+                            <span style="color: var(--text-tertiary);">${article.source || 'Unknown Source'}</span>
+                            <span style="color: ${sentimentColor};">${sentiment}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('newsContainer').innerHTML = newsHtml;
+        } else {
+            document.getElementById('newsContainer').innerHTML = '<p style="padding: 1rem; color: var(--text-tertiary);">No recent news available</p>';
+        }
+
+        document.getElementById('lastUpdated').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+
+    } catch (error) {
+        showToast('Error loading stock data. API limit may be reached.', 'error');
+        console.error(error);
+    }
+}
+
+async function getAIAnalysis() {
+    if (!currentSymbol) {
+        showToast('Please search for a stock first', 'error');
+        return;
+    }
+
+    document.getElementById('aiAnalysis').innerHTML = '<p style="color: var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> Analyzing...</p>';
+
+    try {
+        const response = await apiCall('market/analyze', 'POST', { symbol: currentSymbol });
+
+        let analysisHtml = `
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <div class="stat-card">
+                    <div class="stat-label">Risk Level</div>
+                    <div style="font-size: 1.25rem; font-weight: 700; color: ${
+                        response.risk_level === 'High' ? 'var(--danger)' :
+                        response.risk_level === 'Low' ? 'var(--success)' : 'var(--warning)'
+                    };">${response.risk_level || 'Moderate'}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Recommendation</div>
+                    <div style="font-size: 1.25rem; font-weight: 700;">${response.recommendation || 'Hold'}</div>
+                </div>
+            </div>
+            <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">
+                <h5 style="margin-bottom: 0.5rem;">Analysis</h5>
+                <p style="font-size: 0.875rem; line-height: 1.6;">${response.analysis || response.advice || 'No detailed analysis available.'}</p>
+            </div>
+        `;
+
+        if (response.disclaimer) {
+            analysisHtml += `
+                <p style="font-size: 0.75rem; color: var(--text-tertiary); margin-top: 1rem; font-style: italic;">
+                    ${response.disclaimer}
+                </p>
+            `;
+        }
+
+        document.getElementById('aiAnalysis').innerHTML = analysisHtml;
+
+    } catch (error) {
+        document.getElementById('aiAnalysis').innerHTML = '<p style="color: var(--danger);">Error getting AI analysis. Please try again.</p>';
+    }
+}
+
+function formatMarketCap(value) {
+    if (!value) return 'N/A';
+    const num = parseFloat(value);
+    if (num >= 1e12) return '$' + (num / 1e12).toFixed(2) + 'T';
+    if (num >= 1e9) return '$' + (num / 1e9).toFixed(2) + 'B';
+    if (num >= 1e6) return '$' + (num / 1e6).toFixed(2) + 'M';
+    return '$' + num.toLocaleString();
+}
+
+// Handle Enter key in search
+document.getElementById('symbolInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') searchStock();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+
+{% block title %}Financial Goals - FinanceAI{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Page Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div>
+            <h1>Financial Goals</h1>
+            <p style="color: var(--text-secondary);">Plan and track your financial objectives</p>
+        </div>
+        <button class="btn btn-primary" onclick="showCreateGoalModal()">
+            <i class="fas fa-plus"></i> Create New Goal
+        </button>
+    </div>
+
+    <!-- Goals Summary -->
+    <div class="grid grid-cols-4 mb-4">
+        <div class="stat-card">
+            <div class="stat-label">Total Goals</div>
+            <div class="stat-value" id="totalGoals">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Goals Achieved</div>
+            <div class="stat-value" id="achievedGoals">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Total Target</div>
+            <div class="stat-value" id="totalTarget">Rs.0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Total Saved</div>
+            <div class="stat-value" id="totalSaved">Rs.0</div>
+        </div>
+    </div>
+
+    <!-- Goals List -->
+    <div id="goalsContainer"></div>
+</div>
+
+<!-- Create Goal Modal -->
+<div id="createGoalModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="card" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+        <div class="card-header">
+            <h3 class="card-title">Create New Goal</h3>
+            <button onclick="hideCreateGoalModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        </div>
+
+        <form id="createGoalForm">
+            <div class="form-group">
+                <label class="form-label">Goal Name</label>
+                <input type="text" class="form-input" id="goalName" required placeholder="e.g., Retirement Fund">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Goal Type</label>
+                <select class="form-select" id="goalType" required>
+                    <option value="retirement">Retirement</option>
+                    <option value="education">Education</option>
+                    <option value="house">House</option>
+                    <option value="car">Car</option>
+                    <option value="vacation">Vacation</option>
+                    <option value="emergency_fund">Emergency Fund</option>
+                    <option value="wedding">Wedding</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2">
+                <div class="form-group">
+                    <label class="form-label">Target Amount</label>
+                    <input type="number" class="form-input" id="targetAmount" required placeholder="1000000">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Current Amount</label>
+                    <input type="number" class="form-input" id="currentAmount" value="0" placeholder="0">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2">
+                <div class="form-group">
+                    <label class="form-label">Monthly Contribution</label>
+                    <input type="number" class="form-input" id="monthlyContribution" required placeholder="5000">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Target Date</label>
+                    <input type="date" class="form-input" id="targetDate" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Priority (1-5)</label>
+                <input type="number" class="form-input" id="priority" min="1" max="5" value="3">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg w-full">
+                <i class="fas fa-save"></i> Create Goal
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Goal Details Modal -->
+<div id="goalDetailsModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="card" style="max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto;">
+        <div class="card-header">
+            <h3 class="card-title" id="goalDetailsName"></h3>
+            <button onclick="hideGoalDetailsModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        </div>
+
+        <div id="goalDetailsContent"></div>
+    </div>
+</div>
+
+<script>
+let currentGoals = [];
+
+async function loadGoals() {
+    try {
+        const goals = await apiCall('goals');
+        currentGoals = goals;
+
+        // Update summary
+        document.getElementById('totalGoals').textContent = goals.length;
+        document.getElementById('achievedGoals').textContent = goals.filter(g => g.is_achieved).length;
+
+        const totalTarget = goals.reduce((sum, g) => sum + g.target_amount, 0);
+        const totalSaved = goals.reduce((sum, g) => sum + g.current_amount, 0);
+
+        document.getElementById('totalTarget').textContent = formatCurrency(totalTarget);
+        document.getElementById('totalSaved').textContent = formatCurrency(totalSaved);
+
+        // Render goals
+        renderGoals(goals);
+    } catch (error) {
+        showToast('Error loading goals', 'error');
+    }
+}
+
+function renderGoals(goals) {
+    const container = document.getElementById('goalsContainer');
+
+    if (goals.length === 0) {
+        container.innerHTML = `
+            <div class="card" style="text-align: center; padding: 3rem;">
+                <i class="fas fa-bullseye" style="font-size: 4rem; color: var(--text-tertiary); margin-bottom: 1rem;"></i>
+                <h3 style="margin-bottom: 0.5rem;">No Goals Yet</h3>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Start planning your financial future by creating your first goal</p>
+                <button class="btn btn-primary" onclick="showCreateGoalModal()">
+                    <i class="fas fa-plus"></i> Create Your First Goal
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = '';
+
+    goals.forEach(goal => {
+        const progress = (goal.current_amount / goal.target_amount * 100).toFixed(1);
+        const daysLeft = Math.ceil((new Date(goal.target_date) - new Date()) / (1000 * 60 * 60 * 24));
+
+        const goalHtml = `
+            <div class="card mb-3" style="cursor: pointer;" onclick="showGoalDetails('${goal.id}')">
+                <div class="flex justify-between items-center mb-2">
+                    <div>
+                        <h4 style="margin-bottom: 0.25rem;">${goal.name}</h4>
+                        <span class="badge badge-primary">${goal.goal_type.replace('_', ' ').toUpperCase()}</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 1.5rem; font-weight: 700;">${progress}%</div>
+                        <div style="font-size: 0.75rem; color: var(--text-tertiary);">${daysLeft} days left</div>
+                    </div>
+                </div>
+
+                <div class="progress mb-2">
+                    <div class="progress-bar" style="width: ${progress}%"></div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2" style="font-size: 0.875rem;">
+                    <div>
+                        <div style="color: var(--text-tertiary);">Current</div>
+                        <div style="font-weight: 600;">${formatCurrency(goal.current_amount)}</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-tertiary);">Target</div>
+                        <div style="font-weight: 600;">${formatCurrency(goal.target_amount)}</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-tertiary);">Monthly</div>
+                        <div style="font-weight: 600;">${formatCurrency(goal.monthly_contribution)}</div>
+                    </div>
+                </div>
+
+                ${goal.is_achieved ? '<div class="badge badge-success mt-2"><i class="fas fa-check-circle"></i> Achieved!</div>' : ''}
+            </div>
+        `;
+
+        container.innerHTML += goalHtml;
+    });
+}
+
+async function showGoalDetails(goalId) {
+    try {
+        const goal = currentGoals.find(g => g.id === goalId);
+        const projection = await apiCall(`goals/${goalId}/projection`);
+
+        document.getElementById('goalDetailsName').textContent = goal.name;
+
+        const content = `
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                <div class="stat-card">
+                    <div class="stat-label">Projected Completion</div>
+                    <div style="font-weight: 600; font-size: 1.125rem;">${formatDate(projection.projected_completion_date)}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Monthly Required</div>
+                    <div style="font-weight: 600; font-size: 1.125rem;">${formatCurrency(projection.monthly_required)}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Probability of Success</div>
+                    <div style="font-weight: 600; font-size: 1.125rem; color: ${projection.probability_of_success >= 80 ? 'var(--success)' : 'var(--warning)'};">${projection.probability_of_success.toFixed(1)}%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Shortfall</div>
+                    <div style="font-weight: 600; font-size: 1.125rem; color: var(--danger);">${formatCurrency(projection.shortfall)}</div>
+                </div>
+            </div>
+
+            <div class="card mb-3" style="background: var(--bg-secondary);">
+                <h5 style="margin-bottom: 1rem;"><i class="fas fa-lightbulb"></i> Recommendations</h5>
+                ${projection.recommended_adjustments.map(rec => `
+                    <div style="padding: 0.75rem; background: var(--bg-primary); border-radius: 8px; margin-bottom: 0.5rem;">
+                        <i class="fas fa-check-circle" style="color: var(--primary-color);"></i> ${rec}
+                    </div>
+                `).join('')}
+            </div>
+
+            <div style="height: 300px; margin-bottom: 1rem;">
+                <canvas id="projectionChart"></canvas>
+            </div>
+
+            <div class="flex gap-2">
+                <button class="btn btn-primary" onclick="updateGoalProgress('${goalId}')">
+                    <i class="fas fa-plus-circle"></i> Add Contribution
+                </button>
+                <button class="btn btn-secondary" onclick="deleteGoal('${goalId}')">
+                    <i class="fas fa-trash"></i> Delete Goal
+                </button>
+            </div>
+        `;
+
+        document.getElementById('goalDetailsContent').innerHTML = content;
+        document.getElementById('goalDetailsModal').style.display = 'flex';
+
+        // Render projection chart
+        setTimeout(() => {
+            const labels = projection.timeline_data.map(d => d.date);
+            const projected = projection.timeline_data.map(d => d.projected_value);
+            const target = projection.timeline_data.map(d => d.target);
+
+            createLineChart('projectionChart', labels, [
+                {
+                    label: 'Projected Value',
+                    data: projected,
+                    borderColor: chartColors.primary,
+                    backgroundColor: 'transparent',
+                    tension: 0.4
+                },
+                {
+                    label: 'Target',
+                    data: target,
+                    borderColor: chartColors.secondary,
+                    backgroundColor: 'transparent',
+                    borderDash: [5, 5],
+                    tension: 0.4
+                }
+            ]);
+        }, 100);
+
+    } catch (error) {
+        showToast('Error loading goal details', 'error');
+    }
+}
+
+function showCreateGoalModal() {
+    document.getElementById('createGoalModal').style.display = 'flex';
+    // Set min date to today
+    document.getElementById('targetDate').min = new Date().toISOString().split('T')[0];
+}
+
+function hideCreateGoalModal() {
+    document.getElementById('createGoalModal').style.display = 'none';
+    document.getElementById('createGoalForm').reset();
+}
+
+function hideGoalDetailsModal() {
+    document.getElementById('goalDetailsModal').style.display = 'none';
+}
+
+document.getElementById('createGoalForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const goalData = {
+        name: document.getElementById('goalName').value,
+        goal_type: document.getElementById('goalType').value,
+        target_amount: parseFloat(document.getElementById('targetAmount').value),
+        current_amount: parseFloat(document.getElementById('currentAmount').value) || 0,
+        monthly_contribution: parseFloat(document.getElementById('monthlyContribution').value),
+        target_date: new Date(document.getElementById('targetDate').value).toISOString(),
+        priority: parseInt(document.getElementById('priority').value)
+    };
+
+    try {
+        await apiCall('goals', 'POST', goalData);
+        showToast('Goal created successfully!', 'success');
+        hideCreateGoalModal();
+        loadGoals();
+    } catch (error) {
+        showToast('Error creating goal', 'error');
+    }
+});
+
+async function updateGoalProgress(goalId) {
+    const amount = prompt('Enter contribution amount:');
+    if (!amount || isNaN(amount)) return;
+
+    try {
+        await apiCall(`goals/${goalId}/progress?amount=${parseFloat(amount)}`, 'PUT');
+        showToast('Contribution added!', 'success');
+        hideGoalDetailsModal();
+        loadGoals();
+    } catch (error) {
+        showToast('Error updating goal', 'error');
+    }
+}
+
+async function deleteGoal(goalId) {
+    if (!confirm('Are you sure you want to delete this goal?')) return;
+
+    try {
+        await apiCall(`goals/${goalId}`, 'DELETE');
+        showToast('Goal deleted', 'success');
+        hideGoalDetailsModal();
+        loadGoals();
+    } catch (error) {
+        showToast('Error deleting goal', 'error');
+    }
+}
+
+// Load goals on page load
+loadGoals();
+</script>
+{% endblock %}

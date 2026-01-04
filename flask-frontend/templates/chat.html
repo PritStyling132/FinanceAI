@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+
+{% block title %}AI Advisor - FinanceAI{% endblock %}
+
+{% block content %}
+<style>
+.chat-container {
+    background: var(--bg-primary);
+    border-radius: 16px;
+    padding: 1.5rem;
+    height: calc(100vh - 200px);
+    display: flex;
+    flex-direction: column;
+}
+
+.messages-container {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 1.5rem;
+    padding-right: 0.5rem;
+}
+
+.message {
+    margin-bottom: 1.5rem;
+    animation: fadeIn 0.3s ease;
+}
+
+.message-user {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.message-bot {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.message-content {
+    max-width: 70%;
+    padding: 1rem 1.5rem;
+    border-radius: 16px;
+}
+
+.message-user .message-content {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+}
+
+.message-bot .message-content {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.feedback-buttons {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.feedback-btn {
+    background: none;
+    border: 1px solid var(--border-color);
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+    color: var(--text-secondary);
+}
+
+.feedback-btn:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.feedback-btn.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.star-rating {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.star-btn {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    transition: all 0.2s;
+}
+
+.star-btn:hover,
+.star-btn.active {
+    color: var(--warning);
+}
+
+.chat-input-container {
+    display: flex;
+    gap: 1rem;
+}
+
+.chat-input {
+    flex: 1;
+    padding: 1rem 1.5rem;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 1rem;
+    font-family: 'Inter', sans-serif;
+}
+
+.chat-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+</style>
+
+<div class="fade-in">
+    <h1 style="margin-bottom: 0.5rem;">AI Financial Advisor</h1>
+    <p style="color: var(--text-secondary); margin-bottom: 2rem;">Ask me anything about your finances</p>
+
+    <div class="chat-container card">
+        <div class="messages-container" id="messagesContainer">
+            <div class="message message-bot">
+                <div class="message-content">
+                    <strong>AI Advisor:</strong><br>
+                    Hello! I'm your AI financial advisor. I can help you with:
+                    <ul style="margin-top: 0.5rem;">
+                        <li>Investment recommendations</li>
+                        <li>Budget planning</li>
+                        <li>Retirement planning</li>
+                        <li>Tax saving strategies</li>
+                        <li>Portfolio analysis</li>
+                    </ul>
+                    What would you like to know?
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <input type="text" class="chat-input" id="chatInput" placeholder="Type your question here..." />
+            <button class="btn btn-primary btn-lg" onclick="sendMessage()">
+                <i class="fas fa-paper-plane"></i> Send
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('chatInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendMessage();
+});
+
+async function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+
+    if (!message) return;
+
+    // Add user message
+    addMessage(message, 'user');
+    input.value = '';
+
+    // Show typing indicator
+    const typingId = addMessage('Thinking...', 'bot', null, false);
+
+    try {
+        // Track analytics event
+        await trackEvent('chat_question', 'chat', { question: message });
+
+        const response = await apiCall('chat', 'POST', { message });
+
+        // Remove typing indicator
+        document.getElementById(typingId).remove();
+
+        // Add bot response with feedback buttons
+        const responseId = addMessage(response.response, 'bot', response.response_id || Date.now(), true);
+    } catch (error) {
+        document.getElementById(typingId).remove();
+        addMessage('Sorry, I encountered an error. Please try again.', 'bot', null, false);
+    }
+}
+
+function addMessage(text, type, responseId = null, showFeedback = false) {
+    const container = document.getElementById('messagesContainer');
+    const messageId = 'msg-' + Date.now();
+
+    let feedbackHtml = '';
+    if (showFeedback && type === 'bot') {
+        feedbackHtml = `
+            <div class="feedback-buttons">
+                <span style="font-size: 0.75rem; color: var(--text-tertiary);">Was this helpful?</span>
+                <button class="feedback-btn" onclick="rateFeedback('${responseId}', true, this)">
+                    <i class="fas fa-thumbs-up"></i> Yes
+                </button>
+                <button class="feedback-btn" onclick="rateFeedback('${responseId}', false, this)">
+                    <i class="fas fa-thumbs-down"></i> No
+                </button>
+                <span style="margin-left: auto; font-size: 0.75rem; color: var(--text-tertiary);">Rate:</span>
+                <div class="star-rating">
+                    ${[1,2,3,4,5].map(i => `
+                        <button class="star-btn" onclick="rateStars('${responseId}', ${i}, this)">
+                            <i class="far fa-star"></i>
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    const messageHtml = `
+        <div class="message message-${type}" id="${messageId}">
+            <div class="message-content">
+                <strong>${type === 'user' ? 'You' : 'AI Advisor'}:</strong><br>
+                ${text.replace(/\n/g, '<br>')}
+                ${feedbackHtml}
+            </div>
+        </div>
+    `;
+
+    container.innerHTML += messageHtml;
+    container.scrollTop = container.scrollHeight;
+
+    return messageId;
+}
+
+async function rateFeedback(responseId, helpful, button) {
+    try {
+        // Toggle active state
+        const feedbackButtons = button.parentElement.querySelectorAll('.feedback-btn');
+        feedbackButtons.forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+
+        // Submit feedback
+        await apiCall('feedback', 'POST', {
+            feedback_type: 'chat_response',
+            related_id: responseId,
+            rating: helpful ? 5 : 2,
+            helpful: helpful
+        });
+
+        showToast(helpful ? 'Thanks for your feedback!' : 'Sorry, I\'ll try to improve', 'success');
+    } catch (error) {
+        showToast('Failed to submit feedback', 'error');
+    }
+}
+
+async function rateStars(responseId, rating, button) {
+    try {
+        // Update star buttons
+        const starButtons = button.parentElement.querySelectorAll('.star-btn');
+        starButtons.forEach((btn, index) => {
+            const icon = btn.querySelector('i');
+            if (index < rating) {
+                icon.classList.remove('far');
+                icon.classList.add('fas');
+                btn.classList.add('active');
+            } else {
+                icon.classList.remove('fas');
+                icon.classList.add('far');
+                btn.classList.remove('active');
+            }
+        });
+
+        // Submit rating
+        await apiCall('feedback', 'POST', {
+            feedback_type: 'chat_response',
+            related_id: responseId,
+            rating: rating
+        });
+
+        showToast(`Rated ${rating} stars!`, 'success');
+    } catch (error) {
+        showToast('Failed to submit rating', 'error');
+    }
+}
+
+async function trackEvent(eventType, category, data = {}) {
+    try {
+        await apiCall('analytics/track', 'POST', {
+            event_type: eventType,
+            event_category: category,
+            event_data: data,
+            page: 'chat'
+        });
+    } catch (error) {
+        console.error('Failed to track event:', error);
+    }
+}
+</script>
+{% endblock %}

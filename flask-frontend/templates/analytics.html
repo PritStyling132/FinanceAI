@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics Dashboard - FinanceAI{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <h1 style="margin-bottom: 0.5rem;">Analytics Dashboard</h1>
+    <p style="color: var(--text-secondary); margin-bottom: 2rem;">Your financial health metrics and insights</p>
+
+    <!-- Summary Metrics -->
+    <div class="grid grid-cols-4 gap-3 mb-3">
+        <div class="stat-card">
+            <div class="stat-label">Portfolio Value</div>
+            <div class="stat-value" id="portfolioValue">Rs.0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Total Returns</div>
+            <div class="stat-value" id="totalReturns">Rs.0</div>
+            <div class="stat-change" id="returnsPercent">0%</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Goals Progress</div>
+            <div class="stat-value" id="goalsProgress">0/0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Savings Rate</div>
+            <div class="stat-value" id="savingsRate">0%</div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="grid grid-cols-2 gap-3 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Portfolio Performance</h3>
+            </div>
+            <div style="height: 300px;">
+                <canvas id="performanceChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Asset Allocation</h3>
+            </div>
+            <div style="height: 300px;">
+                <canvas id="allocationChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expense Trends & Goals -->
+    <div class="grid grid-cols-2 gap-3 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Expense Trends</h3>
+            </div>
+            <div style="height: 300px;">
+                <canvas id="expenseChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Goal Progress</h3>
+            </div>
+            <div id="goalsContainer" style="max-height: 300px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <!-- Financial Insights -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Financial Insights</h3>
+            <button class="btn btn-secondary btn-sm" onclick="loadInsights()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+        <div id="insightsContainer"></div>
+    </div>
+</div>
+
+<script>
+let performanceChart = null;
+let allocationChart = null;
+let expenseChart = null;
+
+async function loadAnalytics() {
+    try {
+        // Load summary
+        const summary = await apiCall('analytics/summary');
+
+        document.getElementById('portfolioValue').textContent = formatCurrency(summary.total_portfolio_value || 0);
+        document.getElementById('totalReturns').textContent = formatCurrency(summary.total_returns || 0);
+
+        const returnsPercent = summary.total_returns_percent || 0;
+        const returnsEl = document.getElementById('returnsPercent');
+        returnsEl.textContent = formatPercentage(returnsPercent);
+        returnsEl.className = 'stat-change ' + (returnsPercent >= 0 ? 'positive' : 'negative');
+
+        document.getElementById('goalsProgress').textContent = `${summary.goals_achieved || 0}/${summary.goals_count || 0}`;
+
+        const savingsRate = summary.savings_rate || 0;
+        const savingsEl = document.getElementById('savingsRate');
+        savingsEl.textContent = savingsRate.toFixed(1) + '%';
+        savingsEl.style.color = savingsRate >= 20 ? 'var(--success)' : savingsRate >= 10 ? 'var(--warning)' : 'var(--danger)';
+
+        // Load performance data
+        const perfData = await apiCall('analytics/performance?months=6');
+        createPerformanceChart(perfData);
+
+        // Create allocation chart from recommended allocation
+        if (summary.recommended_allocation) {
+            createAllocationChart(summary.recommended_allocation);
+        }
+
+        // Load expense trends
+        const expenseData = await apiCall('analytics/expense-trends?months=6');
+        createExpenseChart(expenseData.trends || {});
+
+        // Load goal progress
+        const goalData = await apiCall('analytics/goal-progress');
+        renderGoalProgress(goalData.goals || []);
+
+        // Load insights
+        await loadInsights();
+
+    } catch (error) {
+        console.error('Error loading analytics:', error);
+        showToast('Error loading analytics data', 'error');
+    }
+}
+
+function createPerformanceChart(data) {
+    const ctx = document.getElementById('performanceChart').getContext('2d');
+
+    if (performanceChart) performanceChart.destroy();
+
+    performanceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.labels || [],
+            datasets: [
+                {
+                    label: 'Invested',
+                    data: data.invested || [],
+                    borderColor: chartColors.secondary,
+                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: 'Current Value',
+                    data: data.current || [],
+                    borderColor: chartColors.primary,
+                    backgroundColor: 'rgba(0, 208, 156, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return formatCurrency(value);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createAllocationChart(allocation) {
+    const ctx = document.getElementById('allocationChart').getContext('2d');
+
+    if (allocationChart) allocationChart.destroy();
+
+    const labels = Object.keys(allocation);
+    const data = Object.values(allocation);
+    const colors = [chartColors.primary, chartColors.secondary, chartColors.blue, chartColors.purple];
+
+    allocationChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: colors.slice(0, labels.length),
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+function createExpenseChart(trends) {
+    const ctx = document.getElementById('expenseChart').getContext('2d');
+
+    if (expenseChart) expenseChart.destroy();
+
+    const labels = Object.keys(trends);
+    const data = Object.values(trends);
+
+    expenseChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Expenses',
+                data: data,
+                backgroundColor: chartColors.secondary,
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return formatCurrency(value);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderGoalProgress(goals) {
+    const container = document.getElementById('goalsContainer');
+    container.innerHTML = '';
+
+    if (goals.length === 0) {
+        container.innerHTML = '<p style="text-align: center; padding: 2rem; color: var(--text-tertiary);">No goals yet. Create a goal to track progress!</p>';
+        return;
+    }
+
+    goals.forEach(goal => {
+        const progressColor = goal.on_track ? 'var(--success)' : goal.progress_percent > 50 ? 'var(--warning)' : 'var(--danger)';
+
+        const html = `
+            <div style="padding: 1rem; border-bottom: 1px solid var(--border-color);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="font-weight: 600;">${goal.name}</span>
+                    <span style="color: ${progressColor};">${goal.progress_percent.toFixed(1)}%</span>
+                </div>
+                <div class="progress" style="height: 8px;">
+                    <div class="progress-bar" style="width: ${goal.progress_percent}%; background: ${progressColor};"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-tertiary);">
+                    <span>${formatCurrency(goal.current_amount)} / ${formatCurrency(goal.target_amount)}</span>
+                    <span>${goal.days_left} days left</span>
+                </div>
+            </div>
+        `;
+        container.innerHTML += html;
+    });
+}
+
+async function loadInsights() {
+    try {
+        const data = await apiCall('analytics/insights');
+        const container = document.getElementById('insightsContainer');
+        container.innerHTML = '';
+
+        if (!data.insights || data.insights.length === 0) {
+            container.innerHTML = '<p style="text-align: center; padding: 2rem; color: var(--text-tertiary);">No insights available at this time.</p>';
+            return;
+        }
+
+        data.insights.forEach(insight => {
+            const severityColors = {
+                success: 'var(--success)',
+                warning: 'var(--warning)',
+                critical: 'var(--danger)',
+                info: 'var(--secondary-color)'
+            };
+            const severityIcons = {
+                success: 'check-circle',
+                warning: 'exclamation-triangle',
+                critical: 'exclamation-circle',
+                info: 'info-circle'
+            };
+
+            const color = severityColors[insight.severity] || severityColors.info;
+            const icon = severityIcons[insight.severity] || 'info-circle';
+
+            const html = `
+                <div style="padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; gap: 1rem; align-items: start;">
+                    <i class="fas fa-${icon}" style="color: ${color}; font-size: 1.25rem; margin-top: 0.25rem;"></i>
+                    <div>
+                        <h5 style="margin-bottom: 0.25rem;">${insight.title}</h5>
+                        <p style="font-size: 0.875rem; color: var(--text-secondary);">${insight.message}</p>
+                    </div>
+                </div>
+            `;
+            container.innerHTML += html;
+        });
+
+    } catch (error) {
+        console.error('Error loading insights:', error);
+    }
+}
+
+// Load analytics on page load
+loadAnalytics();
+</script>
+{% endblock %}

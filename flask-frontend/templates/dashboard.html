@@ -1,0 +1,416 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - FinanceAI{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Page Header -->
+    <div style="margin-bottom: 2rem;">
+        <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">Welcome, <span id="userName"></span>!</h1>
+        <p style="color: var(--text-secondary); font-size: 1.125rem;">Your AI-Powered Financial Dashboard</p>
+    </div>
+
+    <!-- Risk Profile Banner -->
+    <div id="riskProfileBanner" class="card" style="margin-bottom: 2rem; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h3 style="margin-bottom: 0.5rem;">Your Risk Profile: <span id="riskProfileName">Loading...</span></h3>
+                <p style="opacity: 0.9;">Risk Score: <span id="riskScore">-</span>/10 | Investment Horizon: <span id="investmentHorizon">-</span> years</p>
+            </div>
+            <a href="{{ url_for('profile') }}" class="btn" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);">
+                <i class="fas fa-user-edit"></i> Update Profile
+            </a>
+        </div>
+    </div>
+
+    <!-- Key Metrics Grid -->
+    <div class="grid grid-cols-4 mb-4">
+        <div class="stat-card">
+            <div class="stat-label">Risk Score</div>
+            <div class="stat-value" id="riskScoreCard">-/10</div>
+            <div class="stat-change" id="riskLevel">-</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Recommended Equity</div>
+            <div class="stat-value" id="equityAllocation">-%</div>
+            <div class="stat-change positive">Based on profile</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Recommended Debt</div>
+            <div class="stat-value" id="debtAllocation">-%</div>
+            <div class="stat-change">Stable returns</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Financial Goals</div>
+            <div class="stat-value" id="activeGoals">0</div>
+            <div class="stat-change" id="goalsOnTrack">0 on track</div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-2 gap-3">
+        <!-- Recommended Asset Allocation -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h3 class="card-title">Recommended Asset Allocation</h3>
+                    <p class="card-subtitle">Based on your risk profile and goals</p>
+                </div>
+            </div>
+            <div style="height: 300px;">
+                <canvas id="allocationChart"></canvas>
+            </div>
+            <div id="allocationLegend" style="margin-top: 1rem;"></div>
+        </div>
+
+        <!-- Investment Timeline -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h3 class="card-title">Wealth Projection</h3>
+                    <p class="card-subtitle">Expected growth over your investment horizon</p>
+                </div>
+            </div>
+            <div style="height: 300px;">
+                <canvas id="projectionChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Goals Progress -->
+    <div class="grid grid-cols-2 mt-3">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Financial Goals Progress</h3>
+                <a href="{{ url_for('goals') }}" class="btn btn-sm btn-outline">Manage Goals</a>
+            </div>
+            <div id="goalsContainer" style="max-height: 350px; overflow-y: auto;"></div>
+        </div>
+
+        <!-- AI Insights -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">AI-Generated Insights</h3>
+                <a href="{{ url_for('chat') }}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-robot"></i> Ask AI Advisor
+                </a>
+            </div>
+            <div id="insightsContainer" style="max-height: 350px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-4 mt-3">
+        <a href="{{ url_for('chat') }}" class="card" style="text-align: center; text-decoration: none;">
+            <i class="fas fa-robot" style="font-size: 2.5rem; color: var(--primary-color); margin-bottom: 1rem;"></i>
+            <h4 style="margin-bottom: 0.5rem;">AI Advisor</h4>
+            <p style="color: var(--text-secondary); font-size: 0.875rem;">Get personalized advice</p>
+        </a>
+
+        <a href="{{ url_for('market') }}" class="card" style="text-align: center; text-decoration: none;">
+            <i class="fas fa-chart-line" style="font-size: 2.5rem; color: var(--secondary-color); margin-bottom: 1rem;"></i>
+            <h4 style="margin-bottom: 0.5rem;">Market Data</h4>
+            <p style="color: var(--text-secondary); font-size: 0.875rem;">Real-time stock prices</p>
+        </a>
+
+        <a href="{{ url_for('recommendations') }}" class="card" style="text-align: center; text-decoration: none;">
+            <i class="fas fa-lightbulb" style="font-size: 2.5rem; color: var(--accent-blue); margin-bottom: 1rem;"></i>
+            <h4 style="margin-bottom: 0.5rem;">Recommendations</h4>
+            <p style="color: var(--text-secondary); font-size: 0.875rem;">Investment suggestions</p>
+        </a>
+
+        <a href="{{ url_for('goals') }}" class="card" style="text-align: center; text-decoration: none;">
+            <i class="fas fa-bullseye" style="font-size: 2.5rem; color: var(--accent-purple); margin-bottom: 1rem;"></i>
+            <h4 style="margin-bottom: 0.5rem;">Set Goals</h4>
+            <p style="color: var(--text-secondary); font-size: 0.875rem;">Plan your future</p>
+        </a>
+    </div>
+</div>
+
+<script>
+// Set user name
+document.getElementById('userName').textContent = '{{ user_name or user }}'.split('@')[0];
+
+// Load dashboard data
+async function loadDashboard() {
+    try {
+        // Load analytics summary for risk profile
+        const analytics = await apiCall('analytics/summary');
+        updateRiskProfile(analytics);
+
+        // Load goals
+        const goals = await apiCall('goals');
+        updateGoalsSection(goals);
+
+        // Load insights
+        await loadInsights();
+
+        // Create wealth projection
+        createWealthProjection(analytics);
+
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+        // Show default values
+        showDefaultProfile();
+    }
+}
+
+function updateRiskProfile(data) {
+    const riskScore = data.risk_score || 5;
+    const allocation = data.recommended_allocation || { Stocks: 50, Bonds: 35, Cash: 10, Alternatives: 5 };
+
+    // Risk profile name
+    let profileName = 'Moderate';
+    let riskLevel = 'Balanced';
+    if (riskScore <= 3) {
+        profileName = 'Conservative';
+        riskLevel = 'Low Risk';
+    } else if (riskScore <= 5) {
+        profileName = 'Moderate-Conservative';
+        riskLevel = 'Low-Medium Risk';
+    } else if (riskScore <= 7) {
+        profileName = 'Moderate';
+        riskLevel = 'Medium Risk';
+    } else if (riskScore <= 8) {
+        profileName = 'Moderate-Aggressive';
+        riskLevel = 'Medium-High Risk';
+    } else {
+        profileName = 'Aggressive';
+        riskLevel = 'High Risk';
+    }
+
+    document.getElementById('riskProfileName').textContent = profileName;
+    document.getElementById('riskScore').textContent = riskScore;
+    document.getElementById('investmentHorizon').textContent = '{{ user_name }}' ? '10' : '10';
+
+    document.getElementById('riskScoreCard').textContent = `${riskScore}/10`;
+    document.getElementById('riskLevel').textContent = riskLevel;
+    document.getElementById('riskLevel').className = 'stat-change ' + (riskScore >= 6 ? 'positive' : '');
+
+    document.getElementById('equityAllocation').textContent = `${allocation.Stocks || 50}%`;
+    document.getElementById('debtAllocation').textContent = `${allocation.Bonds || 35}%`;
+
+    // Create allocation chart
+    const labels = Object.keys(allocation);
+    const values = Object.values(allocation);
+    const colors = [chartColors.primary, chartColors.secondary, chartColors.blue, chartColors.purple];
+
+    createPieChart('allocationChart', labels, values, colors);
+
+    // Create legend
+    let legendHtml = '<div style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center;">';
+    labels.forEach((label, i) => {
+        legendHtml += `
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <div style="width: 12px; height: 12px; border-radius: 50%; background: ${colors[i]};"></div>
+                <span style="font-size: 0.875rem;">${label}: ${values[i]}%</span>
+            </div>
+        `;
+    });
+    legendHtml += '</div>';
+    document.getElementById('allocationLegend').innerHTML = legendHtml;
+}
+
+function showDefaultProfile() {
+    document.getElementById('riskProfileName').textContent = 'Moderate';
+    document.getElementById('riskScore').textContent = '5';
+    document.getElementById('investmentHorizon').textContent = '10';
+    document.getElementById('riskScoreCard').textContent = '5/10';
+    document.getElementById('riskLevel').textContent = 'Medium Risk';
+    document.getElementById('equityAllocation').textContent = '50%';
+    document.getElementById('debtAllocation').textContent = '35%';
+
+    const allocation = { Stocks: 50, Bonds: 35, Cash: 10, Alternatives: 5 };
+    createPieChart('allocationChart', Object.keys(allocation), Object.values(allocation),
+        [chartColors.primary, chartColors.secondary, chartColors.blue, chartColors.purple]);
+}
+
+function createWealthProjection(data) {
+    const monthlyInvestment = data.monthly_investment || 10000;
+    const years = 10;
+    const returnRate = 0.10; // 10% annual return
+
+    const labels = [];
+    const projectedValues = [];
+    const investedValues = [];
+
+    let totalInvested = 0;
+    let projectedValue = 0;
+
+    for (let year = 0; year <= years; year++) {
+        labels.push(`Year ${year}`);
+
+        // Calculate invested amount
+        totalInvested = monthlyInvestment * 12 * year;
+        investedValues.push(totalInvested);
+
+        // Calculate projected value with compound interest
+        if (year === 0) {
+            projectedValue = 0;
+        } else {
+            // Future value of monthly SIP
+            const monthlyRate = returnRate / 12;
+            const months = year * 12;
+            projectedValue = monthlyInvestment * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate) * (1 + monthlyRate);
+        }
+        projectedValues.push(Math.round(projectedValue));
+    }
+
+    const ctx = document.getElementById('projectionChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Projected Value',
+                    data: projectedValues,
+                    borderColor: chartColors.primary,
+                    backgroundColor: chartColors.primary + '20',
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: 'Amount Invested',
+                    data: investedValues,
+                    borderColor: chartColors.secondary,
+                    backgroundColor: 'transparent',
+                    borderDash: [5, 5],
+                    tension: 0.4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return formatCurrency(value);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function updateGoalsSection(goals) {
+    document.getElementById('activeGoals').textContent = goals.length;
+
+    let onTrack = 0;
+    const container = document.getElementById('goalsContainer');
+    container.innerHTML = '';
+
+    if (goals.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 2rem; color: var(--text-tertiary);">
+                <i class="fas fa-bullseye" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                <p>No financial goals yet.</p>
+                <a href="{{ url_for('goals') }}" class="btn btn-primary btn-sm" style="margin-top: 1rem;">Create Your First Goal</a>
+            </div>
+        `;
+        return;
+    }
+
+    goals.forEach(goal => {
+        const progress = Math.min(100, (goal.current_amount / goal.target_amount * 100)).toFixed(1);
+        if (progress >= 80) onTrack++;
+
+        const daysLeft = Math.max(0, Math.floor((new Date(goal.target_date) - new Date()) / (1000 * 60 * 60 * 24)));
+
+        container.innerHTML += `
+            <div style="padding: 1rem; border-bottom: 1px solid var(--border-color);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="font-weight: 600;">${goal.name}</span>
+                    <span style="color: ${progress >= 80 ? 'var(--success)' : 'var(--text-secondary)'}; font-weight: 600;">${progress}%</span>
+                </div>
+                <div class="progress" style="margin-bottom: 0.5rem;">
+                    <div class="progress-bar" style="width: ${progress}%"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-tertiary);">
+                    <span>${formatCurrency(goal.current_amount)} of ${formatCurrency(goal.target_amount)}</span>
+                    <span>${daysLeft} days left</span>
+                </div>
+            </div>
+        `;
+    });
+
+    document.getElementById('goalsOnTrack').textContent = `${onTrack} on track`;
+}
+
+async function loadInsights() {
+    try {
+        const response = await apiCall('analytics/insights');
+        const container = document.getElementById('insightsContainer');
+
+        if (!response.insights || response.insights.length === 0) {
+            container.innerHTML = `
+                <div style="padding: 2rem; text-align: center; color: var(--text-tertiary);">
+                    <i class="fas fa-lightbulb" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                    <p>Complete your profile to get personalized insights.</p>
+                    <a href="{{ url_for('profile') }}" class="btn btn-primary btn-sm" style="margin-top: 1rem;">Setup Profile</a>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = '';
+        response.insights.forEach(insight => {
+            const icons = {
+                'portfolio': 'fa-chart-pie',
+                'savings': 'fa-piggy-bank',
+                'goal': 'fa-bullseye',
+                'emergency': 'fa-shield-alt'
+            };
+
+            const colors = {
+                'success': 'var(--success)',
+                'warning': 'var(--warning)',
+                'critical': 'var(--danger)',
+                'info': 'var(--primary-color)'
+            };
+
+            container.innerHTML += `
+                <div style="padding: 1rem; border-bottom: 1px solid var(--border-color);">
+                    <div style="display: flex; gap: 1rem; align-items: start;">
+                        <i class="fas ${icons[insight.type] || 'fa-info-circle'}" style="color: ${colors[insight.severity]}; margin-top: 0.25rem;"></i>
+                        <div>
+                            <h5 style="margin-bottom: 0.25rem; color: ${colors[insight.severity]};">${insight.title}</h5>
+                            <p style="font-size: 0.875rem; color: var(--text-secondary);">${insight.message}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    } catch (error) {
+        console.error('Error loading insights:', error);
+        document.getElementById('insightsContainer').innerHTML = `
+            <div style="padding: 2rem; text-align: center; color: var(--text-tertiary);">
+                <p>Unable to load insights. <a href="{{ url_for('chat') }}">Ask our AI Advisor</a> for personalized advice.</p>
+            </div>
+        `;
+    }
+}
+
+// Load dashboard on page load
+loadDashboard();
+
+// Refresh every 5 minutes
+setInterval(loadDashboard, 300000);
+</script>
+{% endblock %}

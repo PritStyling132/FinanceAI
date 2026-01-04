@@ -1,0 +1,352 @@
+{% extends "base.html" %}
+
+{% block title %}Budget Management - FinanceAI{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div>
+            <h1>Budget & Expenses</h1>
+            <p style="color: var(--text-secondary);">Track your spending and manage budgets</p>
+        </div>
+        <div style="display: flex; gap: 1rem;">
+            <button class="btn btn-secondary" onclick="showSetBudgetModal()">
+                <i class="fas fa-cog"></i> Set Budget
+            </button>
+            <button class="btn btn-primary" onclick="showAddExpenseModal()">
+                <i class="fas fa-plus"></i> Add Expense
+            </button>
+        </div>
+    </div>
+
+    <!-- Budget Summary -->
+    <div class="grid grid-cols-4 mb-4">
+        <div class="stat-card">
+            <div class="stat-label">Monthly Income</div>
+            <div class="stat-value" id="totalIncome">Rs.0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Total Expenses</div>
+            <div class="stat-value" id="totalExpenses">Rs.0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Savings</div>
+            <div class="stat-value" id="savings">Rs.0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Savings Rate</div>
+            <div class="stat-value" id="savingsRate">0%</div>
+        </div>
+    </div>
+
+    <!-- Expenses List & Budget Chart -->
+    <div class="grid grid-cols-2 gap-3">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Recent Expenses</h3>
+            </div>
+            <div id="expensesList" style="max-height: 500px; overflow-y: auto;"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Category Breakdown</h3>
+            </div>
+            <div style="height: 400px;">
+                <canvas id="budgetChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Expense Modal -->
+<div id="addExpenseModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="card" style="max-width: 500px; width: 90%;">
+        <div class="card-header">
+            <h3 class="card-title">Add Expense</h3>
+            <button onclick="hideAddExpenseModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        </div>
+        <form id="addExpenseForm">
+            <div class="form-group">
+                <label class="form-label">Category</label>
+                <select class="form-select" id="category" required>
+                    <option value="food">Food & Dining</option>
+                    <option value="transport">Transport</option>
+                    <option value="utilities">Utilities</option>
+                    <option value="entertainment">Entertainment</option>
+                    <option value="healthcare">Healthcare</option>
+                    <option value="education">Education</option>
+                    <option value="shopping">Shopping</option>
+                    <option value="rent">Rent</option>
+                    <option value="insurance">Insurance</option>
+                    <option value="investments">Investments</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Amount (Rs.)</label>
+                <input type="number" class="form-input" id="amount" required placeholder="500" step="1">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <input type="text" class="form-input" id="description" placeholder="e.g., Groceries from store">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Date</label>
+                <input type="date" class="form-input" id="expenseDate" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Payment Method</label>
+                <select class="form-select" id="paymentMethod">
+                    <option value="cash">Cash</option>
+                    <option value="upi">UPI</option>
+                    <option value="card">Credit/Debit Card</option>
+                    <option value="netbanking">Net Banking</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg w-full">Add Expense</button>
+        </form>
+    </div>
+</div>
+
+<!-- Set Budget Modal -->
+<div id="setBudgetModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="card" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+        <div class="card-header">
+            <h3 class="card-title">Set Monthly Budget</h3>
+            <button onclick="hideSetBudgetModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        </div>
+        <form id="setBudgetForm">
+            <div class="form-group">
+                <label class="form-label">Monthly Income (Rs.)</label>
+                <input type="number" class="form-input" id="budgetIncome" required placeholder="100000">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Total Budget (Rs.)</label>
+                <input type="number" class="form-input" id="totalBudget" required placeholder="80000">
+            </div>
+
+            <h4 style="margin: 1.5rem 0 1rem;">Category-wise Budget</h4>
+            <div class="grid grid-cols-2 gap-2">
+                <div class="form-group">
+                    <label class="form-label">Food & Dining</label>
+                    <input type="number" class="form-input" id="budget_food" placeholder="10000">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Transport</label>
+                    <input type="number" class="form-input" id="budget_transport" placeholder="5000">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Utilities</label>
+                    <input type="number" class="form-input" id="budget_utilities" placeholder="5000">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Entertainment</label>
+                    <input type="number" class="form-input" id="budget_entertainment" placeholder="3000">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Shopping</label>
+                    <input type="number" class="form-input" id="budget_shopping" placeholder="5000">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Healthcare</label>
+                    <input type="number" class="form-input" id="budget_healthcare" placeholder="2000">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg w-full">Save Budget</button>
+        </form>
+    </div>
+</div>
+
+<script>
+const currentMonth = new Date().toISOString().slice(0, 7);
+let budgetChart = null;
+
+async function loadBudget() {
+    try {
+        const summary = await apiCall(`budget/summary?month=${currentMonth}`);
+
+        document.getElementById('totalIncome').textContent = formatCurrency(summary.income || 0);
+        document.getElementById('totalExpenses').textContent = formatCurrency(summary.total_spent || 0);
+        document.getElementById('savings').textContent = formatCurrency(summary.savings || 0);
+
+        const savingsRate = summary.savings_rate || 0;
+        const savingsRateEl = document.getElementById('savingsRate');
+        savingsRateEl.textContent = savingsRate.toFixed(1) + '%';
+        savingsRateEl.style.color = savingsRate >= 20 ? 'var(--success)' : savingsRate >= 10 ? 'var(--warning)' : 'var(--danger)';
+
+        // Load expenses
+        const expenses = await apiCall(`budget/expenses/all?month=${currentMonth}`);
+        renderExpenses(expenses);
+
+        // Render category breakdown chart
+        if (summary.category_breakdown && Object.keys(summary.category_breakdown).length > 0) {
+            const categories = Object.keys(summary.category_breakdown);
+            const amounts = Object.values(summary.category_breakdown);
+            const colors = [
+                chartColors.primary, chartColors.secondary, chartColors.blue,
+                chartColors.purple, chartColors.orange, chartColors.pink,
+                chartColors.teal, chartColors.indigo, chartColors.green
+            ];
+
+            if (budgetChart) {
+                budgetChart.destroy();
+            }
+
+            const ctx = document.getElementById('budgetChart').getContext('2d');
+            budgetChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: categories.map(c => c.charAt(0).toUpperCase() + c.slice(1)),
+                    datasets: [{
+                        data: amounts,
+                        backgroundColor: colors.slice(0, categories.length),
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error loading budget:', error);
+        showToast('Error loading budget data', 'error');
+    }
+}
+
+function renderExpenses(expenses) {
+    const container = document.getElementById('expensesList');
+    container.innerHTML = '';
+
+    if (!expenses || expenses.length === 0) {
+        container.innerHTML = '<p style="text-align: center; padding: 2rem; color: var(--text-tertiary);">No expenses yet. Start tracking your spending!</p>';
+        return;
+    }
+
+    expenses.forEach(expense => {
+        const categoryColors = {
+            food: 'var(--primary-color)',
+            transport: 'var(--secondary-color)',
+            utilities: 'var(--blue)',
+            entertainment: 'var(--purple)',
+            healthcare: 'var(--pink)',
+            shopping: 'var(--orange)',
+            rent: 'var(--teal)',
+            other: 'var(--text-tertiary)'
+        };
+        const color = categoryColors[expense.category] || 'var(--text-tertiary)';
+
+        const html = `
+            <div style="padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h5 style="margin-bottom: 0.25rem;">${expense.description || expense.category}</h5>
+                    <span class="badge" style="background: ${color}; color: white;">${expense.category.toUpperCase()}</span>
+                    <span style="font-size: 0.875rem; color: var(--text-tertiary); margin-left: 0.5rem;">${formatDate(expense.date)}</span>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 1.25rem; font-weight: 700;">${formatCurrency(expense.amount)}</div>
+                    <button onclick="deleteExpense(${expense.id})" style="background: none; border: none; color: var(--danger); cursor: pointer; font-size: 0.75rem;">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
+            </div>
+        `;
+        container.innerHTML += html;
+    });
+}
+
+async function deleteExpense(expenseId) {
+    if (!confirm('Are you sure you want to delete this expense?')) return;
+
+    try {
+        await apiCall(`budget/expenses/${expenseId}`, 'DELETE');
+        showToast('Expense deleted', 'success');
+        loadBudget();
+    } catch (error) {
+        showToast('Error deleting expense', 'error');
+    }
+}
+
+function showAddExpenseModal() {
+    document.getElementById('addExpenseModal').style.display = 'flex';
+    document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
+}
+
+function hideAddExpenseModal() {
+    document.getElementById('addExpenseModal').style.display = 'none';
+    document.getElementById('addExpenseForm').reset();
+}
+
+function showSetBudgetModal() {
+    document.getElementById('setBudgetModal').style.display = 'flex';
+}
+
+function hideSetBudgetModal() {
+    document.getElementById('setBudgetModal').style.display = 'none';
+}
+
+document.getElementById('addExpenseForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const expenseData = {
+        category: document.getElementById('category').value,
+        amount: parseFloat(document.getElementById('amount').value),
+        description: document.getElementById('description').value || document.getElementById('category').value,
+        date: new Date(document.getElementById('expenseDate').value).toISOString(),
+        payment_method: document.getElementById('paymentMethod').value
+    };
+
+    try {
+        await apiCall('budget/expenses', 'POST', expenseData);
+        showToast('Expense added!', 'success');
+        hideAddExpenseModal();
+        loadBudget();
+    } catch (error) {
+        showToast('Error adding expense', 'error');
+    }
+});
+
+document.getElementById('setBudgetForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const categoryBudgets = {};
+    ['food', 'transport', 'utilities', 'entertainment', 'shopping', 'healthcare'].forEach(cat => {
+        const val = document.getElementById(`budget_${cat}`).value;
+        if (val) categoryBudgets[cat] = parseFloat(val);
+    });
+
+    const budgetData = {
+        month: currentMonth,
+        income: parseFloat(document.getElementById('budgetIncome').value),
+        total_budget: parseFloat(document.getElementById('totalBudget').value),
+        category_budgets: categoryBudgets
+    };
+
+    try {
+        await apiCall(`budget/${currentMonth}`, 'PUT', budgetData);
+        showToast('Budget saved!', 'success');
+        hideSetBudgetModal();
+        loadBudget();
+    } catch (error) {
+        // Try creating if update fails
+        try {
+            await apiCall('budget', 'POST', budgetData);
+            showToast('Budget created!', 'success');
+            hideSetBudgetModal();
+            loadBudget();
+        } catch (e) {
+            showToast('Error saving budget', 'error');
+        }
+    }
+});
+
+loadBudget();
+</script>
+{% endblock %}

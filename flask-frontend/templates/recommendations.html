@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block title %}Recommendations - FinanceAI{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <h1 style="margin-bottom: 0.5rem;">Investment Recommendations</h1>
+    <p style="color: var(--text-secondary); margin-bottom: 2rem;">Personalized advice based on your profile and goals</p>
+
+    <!-- Portfolio Summary -->
+    <div class="card mb-3" style="background: linear-gradient(135deg, rgba(0, 208, 156, 0.1), rgba(79, 70, 229, 0.1));">
+        <div class="grid grid-cols-3 gap-3">
+            <div>
+                <div style="font-size: 0.875rem; color: var(--text-tertiary);">Your Risk Profile</div>
+                <div style="font-size: 1.5rem; font-weight: 700;" id="riskProfile">Loading...</div>
+            </div>
+            <div>
+                <div style="font-size: 0.875rem; color: var(--text-tertiary);">Risk Score</div>
+                <div style="font-size: 1.5rem; font-weight: 700;" id="riskScore">-/10</div>
+            </div>
+            <div>
+                <div style="font-size: 0.875rem; color: var(--text-tertiary);">Diversification</div>
+                <div style="font-size: 1.5rem; font-weight: 700;" id="diversification">-%</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Asset Allocation -->
+    <div class="grid grid-cols-2 gap-3 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Recommended Asset Allocation</h3>
+            </div>
+            <div style="height: 250px;">
+                <canvas id="allocationChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Rebalancing Actions</h3>
+            </div>
+            <div id="rebalancingActions" style="max-height: 250px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <!-- Recommendations List -->
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3 class="card-title">Personalized Recommendations</h3>
+            <button class="btn btn-secondary btn-sm" onclick="loadRecommendations()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+        <div id="recommendationsContainer"></div>
+    </div>
+
+    <!-- AI Advisor -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Ask AI Advisor</h3>
+        </div>
+        <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+            <input type="text" class="form-input" id="aiQuestion" placeholder="Ask about investments, retirement planning, tax savings..." style="flex: 1;">
+            <button class="btn btn-primary" onclick="askAI()">
+                <i class="fas fa-robot"></i> Ask
+            </button>
+        </div>
+        <div id="aiResponse" style="display: none; background: var(--bg-secondary); padding: 1rem; border-radius: 8px;"></div>
+    </div>
+</div>
+
+<script>
+let allocationChart = null;
+
+async function loadRecommendations() {
+    try {
+        // Load portfolio recommendation
+        const portfolio = await apiCall('recommendations/portfolio');
+
+        document.getElementById('riskProfile').textContent = portfolio.risk_profile || 'Moderate';
+        document.getElementById('riskScore').textContent = (portfolio.risk_score || 5) + '/10';
+        document.getElementById('diversification').textContent = (portfolio.diversification_score || 0).toFixed(0) + '%';
+
+        // Create allocation chart
+        if (portfolio.recommended_allocation) {
+            createAllocationChart(portfolio.recommended_allocation);
+        }
+
+        // Show rebalancing suggestions
+        renderRebalancing(portfolio.rebalancing_suggestions || []);
+
+        // Load personalized recommendations
+        const recommendations = await apiCall('recommendations');
+        renderRecommendations(recommendations);
+
+    } catch (error) {
+        console.error('Error loading recommendations:', error);
+        showToast('Error loading recommendations', 'error');
+    }
+}
+
+function createAllocationChart(allocation) {
+    const ctx = document.getElementById('allocationChart').getContext('2d');
+
+    if (allocationChart) allocationChart.destroy();
+
+    const labels = Object.keys(allocation);
+    const data = Object.values(allocation);
+    const colors = [chartColors.primary, chartColors.secondary, chartColors.blue, chartColors.purple];
+
+    allocationChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: colors.slice(0, labels.length),
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' + context.parsed + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderRebalancing(suggestions) {
+    const container = document.getElementById('rebalancingActions');
+
+    if (suggestions.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 2rem; color: var(--success);">
+                <i class="fas fa-check-circle" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
+                <p>Your portfolio is well balanced!</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = suggestions.map(s => {
+        const color = s.action === 'increase' ? 'var(--success)' : 'var(--danger)';
+        const icon = s.action === 'increase' ? 'arrow-up' : 'arrow-down';
+
+        return `
+            <div style="padding: 1rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 1rem;">
+                <i class="fas fa-${icon}" style="color: ${color};"></i>
+                <div style="flex: 1;">
+                    <div style="font-weight: 600;">${s.asset_class}</div>
+                    <div style="font-size: 0.875rem; color: var(--text-tertiary);">
+                        ${s.current_percent.toFixed(1)}% -> ${s.target_percent.toFixed(1)}%
+                    </div>
+                </div>
+                <span class="badge" style="background: ${color}; color: white;">
+                    ${s.action.toUpperCase()} ${s.adjustment_percent.toFixed(1)}%
+                </span>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderRecommendations(recommendations) {
+    const container = document.getElementById('recommendationsContainer');
+
+    if (!recommendations || recommendations.length === 0) {
+        container.innerHTML = '<p style="text-align: center; padding: 2rem; color: var(--text-tertiary);">No recommendations available. Complete your profile for personalized advice.</p>';
+        return;
+    }
+
+    const priorityColors = {
+        high: 'var(--danger)',
+        medium: 'var(--warning)',
+        low: 'var(--text-tertiary)'
+    };
+
+    const typeIcons = {
+        asset_allocation: 'chart-pie',
+        stock: 'chart-line',
+        mutual_fund: 'coins',
+        action: 'tasks'
+    };
+
+    container.innerHTML = recommendations.map(rec => {
+        const color = priorityColors[rec.priority] || priorityColors.medium;
+        const icon = typeIcons[rec.type] || 'lightbulb';
+
+        return `
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color);">
+                <div style="display: flex; gap: 1rem; align-items: start; margin-bottom: 1rem;">
+                    <i class="fas fa-${icon}" style="font-size: 1.5rem; color: var(--primary-color);"></i>
+                    <div style="flex: 1;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <h4>${rec.title}</h4>
+                            <span class="badge" style="background: ${color}; color: white;">${rec.priority.toUpperCase()}</span>
+                        </div>
+                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">${rec.description}</p>
+
+                        ${rec.action_items && rec.action_items.length > 0 ? `
+                            <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">
+                                <h5 style="margin-bottom: 0.5rem; font-size: 0.875rem;">Action Items:</h5>
+                                <ul style="margin: 0; padding-left: 1.25rem; font-size: 0.875rem;">
+                                    ${rec.action_items.map(item => `<li style="margin-bottom: 0.25rem;">${item}</li>`).join('')}
+                                </ul>
+                            </div>
+                        ` : ''}
+
+                        ${rec.metrics ? `
+                            <div style="display: flex; gap: 2rem; margin-top: 1rem; font-size: 0.875rem;">
+                                ${Object.entries(rec.metrics).map(([key, value]) => `
+                                    <div>
+                                        <span style="color: var(--text-tertiary);">${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</span>
+                                        <span style="font-weight: 600;">${typeof value === 'number' ? (key.includes('amount') ? formatCurrency(value) : value) : value}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function askAI() {
+    const question = document.getElementById('aiQuestion').value.trim();
+
+    if (!question) {
+        showToast('Please enter a question', 'error');
+        return;
+    }
+
+    const responseContainer = document.getElementById('aiResponse');
+    responseContainer.style.display = 'block';
+    responseContainer.innerHTML = '<p><i class="fas fa-spinner fa-spin"></i> Thinking...</p>';
+
+    try {
+        const response = await apiCall('recommendations/ai-advice', 'POST', { question });
+
+        let html = `
+            <div style="margin-bottom: 1rem;">
+                <strong>Your Question:</strong> ${question}
+            </div>
+            <div style="line-height: 1.8;">
+                ${response.response || response.advice || 'Unable to generate response.'}
+            </div>
+        `;
+
+        if (response.disclaimer) {
+            html += `
+                <p style="font-size: 0.75rem; color: var(--text-tertiary); margin-top: 1rem; font-style: italic;">
+                    ${response.disclaimer}
+                </p>
+            `;
+        }
+
+        responseContainer.innerHTML = html;
+
+    } catch (error) {
+        responseContainer.innerHTML = '<p style="color: var(--danger);">Error getting AI response. Please try again.</p>';
+    }
+}
+
+// Handle Enter key
+document.getElementById('aiQuestion').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') askAI();
+});
+
+// Load recommendations on page load
+loadRecommendations();
+</script>
+{% endblock %}

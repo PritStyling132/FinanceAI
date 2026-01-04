@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}FinanceAI - AI-Powered Financial Advisor{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    {% if user %}
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container navbar-container">
+            <a href="{{ url_for('dashboard') }}" class="navbar-brand">
+                <i class="fas fa-chart-line"></i> FinanceAI
+            </a>
+            <ul class="navbar-menu">
+                <li><a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    <i class="fas fa-home"></i> Dashboard
+                </a></li>
+                <li><a href="{{ url_for('chat') }}" class="{% if request.endpoint == 'chat' %}active{% endif %}">
+                    <i class="fas fa-robot"></i> AI Advisor
+                </a></li>
+                <li><a href="{{ url_for('market') }}" class="{% if request.endpoint == 'market' %}active{% endif %}">
+                    <i class="fas fa-chart-bar"></i> Market Data
+                </a></li>
+                <li><a href="{{ url_for('recommendations') }}" class="{% if request.endpoint == 'recommendations' %}active{% endif %}">
+                    <i class="fas fa-lightbulb"></i> Recommendations
+                </a></li>
+            </ul>
+            <div class="navbar-user">
+                <a href="{{ url_for('profile') }}" class="{% if request.endpoint == 'profile' %}active{% endif %}" style="margin-right: 1rem; color: var(--text-secondary);">
+                    <i class="fas fa-user-cog"></i>
+                </a>
+                <div class="user-avatar">{{ user[0]|upper }}</div>
+                <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <!-- Main Content -->
+    <div class="{% if user %}main-layout{% endif %}">
+        {% if user %}
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">
+                        <i class="fas fa-home"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('profile') }}" class="{% if request.endpoint == 'profile' %}active{% endif %}">
+                        <i class="fas fa-user-circle"></i>
+                        <span>My Profile</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('chat') }}" class="{% if request.endpoint == 'chat' %}active{% endif %}">
+                        <i class="fas fa-robot"></i>
+                        <span>AI Financial Advisor</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('market') }}" class="{% if request.endpoint == 'market' %}active{% endif %}">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Market Data</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('recommendations') }}" class="{% if request.endpoint == 'recommendations' %}active{% endif %}">
+                        <i class="fas fa-lightbulb"></i>
+                        <span>Recommendations</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('goals') }}" class="{% if request.endpoint == 'goals' %}active{% endif %}">
+                        <i class="fas fa-bullseye"></i>
+                        <span>Financial Goals</span>
+                    </a>
+                </li>
+            </ul>
+
+            <div class="sidebar-info" style="margin-top: auto; padding: 1rem; background: var(--bg-secondary); border-radius: 12px; margin: 1rem;">
+                <p style="font-size: 0.75rem; color: var(--text-tertiary); margin-bottom: 0.5rem;">Powered by</p>
+                <p style="font-size: 0.875rem; font-weight: 600;">LLM + RAG Pipeline</p>
+                <p style="font-size: 0.75rem; color: var(--text-tertiary);">Alpha Vantage API</p>
+            </div>
+        </aside>
+        {% endif %}
+
+        <!-- Page Content -->
+        <main class="{% if user %}main-content{% else %}w-full{% endif %}">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" style="position: fixed; top: 90px; right: 20px; z-index: 9999;"></div>
+
+    <!-- Legal Disclaimer Footer -->
+    <footer class="disclaimer-footer">
+        <div class="container">
+            <div class="disclaimer-content">
+                <div class="disclaimer-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="disclaimer-text">
+                    <h4>Important Disclaimer</h4>
+                    <p>
+                        <strong>FinanceAI is NOT a SEBI registered investment advisor.</strong> This platform is designed for educational and informational purposes only.
+                        All investment recommendations, financial advice, and suggestions provided are based on AI algorithms (LLM + RAG) and should not be considered as professional financial advice.
+                    </p>
+                    <p>
+                        <strong>Risk Warning:</strong> Investments in securities market are subject to market risks. Past performance does not guarantee future returns.
+                        Please read all scheme-related documents carefully before investing. The AI-generated recommendations may not be suitable for all investors.
+                    </p>
+                    <p>
+                        <strong>Consult a Professional:</strong> Before making any investment decisions, we strongly recommend consulting with a SEBI registered financial advisor.
+                    </p>
+                </div>
+            </div>
+            <div class="disclaimer-footer-links">
+                <span>&copy; 2025 FinanceAI - AI-Powered Financial Advisor</span>
+                <span class="separator">|</span>
+                <a href="#" onclick="showDisclaimerModal(); return false;">Full Disclaimer</a>
+                <span class="separator">|</span>
+                <a href="#" onclick="showPrivacyModal(); return false;">Privacy Policy</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Disclaimer Modal -->
+    <div id="disclaimerModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-exclamation-triangle"></i> Full Legal Disclaimer</h3>
+                <button class="modal-close" onclick="closeDisclaimerModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="max-height: 500px; overflow-y: auto;">
+                <h4>1. Not a Registered Investment Advisor</h4>
+                <p>FinanceAI is NOT registered with the Securities and Exchange Board of India (SEBI) as an investment advisor. We do not provide personalized investment advisory services as defined under the SEBI (Investment Advisers) Regulations, 2013.</p>
+
+                <h4>2. Educational Purpose Only</h4>
+                <p>All content, recommendations, analysis, and suggestions provided on this platform are for educational and informational purposes only. They should not be construed as investment advice, financial planning recommendations, or solicitation to buy or sell any securities.</p>
+
+                <h4>3. AI-Generated Content</h4>
+                <p>This platform uses Large Language Models (LLM) and Retrieval-Augmented Generation (RAG) to generate financial advice. AI-generated content may contain errors or hallucinations. Always verify information from official sources.</p>
+
+                <h4>4. Market Risks</h4>
+                <p>Investing in stocks, mutual funds, bonds, and other financial instruments involves substantial risk, including the potential loss of principal. Market conditions can change rapidly, and past performance is not indicative of future results.</p>
+
+                <h4>5. No Guarantee of Returns</h4>
+                <p>FinanceAI does not guarantee any specific returns or profits. All projections, forecasts, and expected returns shown are hypothetical and based on historical data and mathematical models.</p>
+
+                <h4>6. Data Sources</h4>
+                <p>Market data is sourced from Alpha Vantage API. We are not responsible for the accuracy or reliability of third-party data. Real-time data may be delayed.</p>
+
+                <h4>7. User Responsibility</h4>
+                <p>You are solely responsible for your investment decisions. Before making any investment, you should:</p>
+                <ul>
+                    <li>Conduct your own research and due diligence</li>
+                    <li>Consult with a SEBI registered financial advisor</li>
+                    <li>Review all scheme-related documents carefully</li>
+                    <li>Assess your risk tolerance and financial goals</li>
+                </ul>
+
+                <h4>8. No Liability</h4>
+                <p>FinanceAI, its creators, developers, and affiliates shall not be held liable for any losses, damages, or adverse consequences arising from use of this platform.</p>
+
+                <p class="disclaimer-acknowledgment"><strong>By clicking "I Understand" or continuing to use this platform, you acknowledge that you have read, understood, and agree to this disclaimer.</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="acknowledgeDisclaimer()">I Understand</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Privacy Policy Modal -->
+    <div id="privacyModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-shield-alt"></i> Privacy Policy</h3>
+                <button class="modal-close" onclick="closePrivacyModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="max-height: 500px; overflow-y: auto;">
+                <h4>Data Collection</h4>
+                <p>We collect personal information including name, email, age, income, risk tolerance, and investment goals to provide personalized AI-powered recommendations.</p>
+
+                <h4>Data Usage</h4>
+                <p>Your data is used to:</p>
+                <ul>
+                    <li>Generate personalized investment recommendations using our LLM</li>
+                    <li>Build user embeddings for optimal investment mapping</li>
+                    <li>Improve our AI models and services</li>
+                </ul>
+                <p>We do not sell your personal information to third parties.</p>
+
+                <h4>Data Security</h4>
+                <p>We implement industry-standard security measures including encryption (bcrypt password hashing, JWT authentication) to protect your data.</p>
+
+                <h4>Third-Party Services</h4>
+                <p>We use Alpha Vantage API for market data. Please review their privacy policy for information on how they handle data.</p>
+
+                <h4>Your Rights</h4>
+                <p>You have the right to access, modify, or delete your personal data at any time through your profile settings.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closePrivacyModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Disclaimer Scripts -->
+    <script>
+    function showDisclaimerModal() {
+        document.getElementById('disclaimerModal').style.display = 'flex';
+    }
+
+    function closeDisclaimerModal() {
+        document.getElementById('disclaimerModal').style.display = 'none';
+    }
+
+    function acknowledgeDisclaimer() {
+        localStorage.setItem('disclaimerAcknowledged', 'true');
+        closeDisclaimerModal();
+        showToast('Disclaimer acknowledged', 'info');
+    }
+
+    function showPrivacyModal() {
+        document.getElementById('privacyModal').style.display = 'flex';
+    }
+
+    function closePrivacyModal() {
+        document.getElementById('privacyModal').style.display = 'none';
+    }
+
+    // Show disclaimer modal on first visit
+    window.addEventListener('load', function() {
+        const acknowledged = localStorage.getItem('disclaimerAcknowledged');
+        if (!acknowledged && {{ 'true' if user else 'false' }}) {
+            setTimeout(showDisclaimerModal, 1000);
+        }
+    });
+
+    // Close modal on outside click
+    window.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal')) {
+            e.target.style.display = 'none';
+        }
+    });
+    </script>
+
+    <!-- Global JavaScript -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

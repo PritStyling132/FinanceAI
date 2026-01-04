@@ -1,0 +1,368 @@
+{% extends "base.html" %}
+
+{% block title %}User Profile - FinanceAI{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div style="margin-bottom: 2rem;">
+        <h1 style="margin-bottom: 0.5rem;">User Profile Setup</h1>
+        <p style="color: var(--text-secondary);">Complete your profile for personalized AI-powered recommendations</p>
+    </div>
+
+    <!-- Profile Importance Banner -->
+    <div class="card" style="margin-bottom: 2rem; background: linear-gradient(135deg, rgba(0, 208, 156, 0.1), rgba(79, 70, 229, 0.1)); border: 1px solid var(--primary-color);">
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <i class="fas fa-info-circle" style="font-size: 2rem; color: var(--primary-color);"></i>
+            <div>
+                <h4 style="margin-bottom: 0.25rem;">Why we need this information</h4>
+                <p style="color: var(--text-secondary); font-size: 0.875rem;">
+                    Our AI uses your profile to generate personalized investment recommendations, optimal asset allocation,
+                    and goal-based financial plans tailored to your risk tolerance and time horizon.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-3">
+        <!-- Profile Form -->
+        <div class="card" style="grid-column: span 2;">
+            <h3 style="margin-bottom: 1.5rem;"><i class="fas fa-user-edit"></i> Personal Information</h3>
+
+            <form id="profileForm">
+                <!-- Basic Info -->
+                <div class="grid grid-cols-2">
+                    <div class="form-group">
+                        <label class="form-label">Full Name</label>
+                        <input type="text" class="form-input" id="fullName" placeholder="Your Name">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Age *</label>
+                        <input type="number" class="form-input" id="age" required placeholder="30" min="18" max="100">
+                    </div>
+                </div>
+
+                <!-- Financial Info -->
+                <h4 style="margin: 1.5rem 0 1rem; color: var(--text-secondary);"><i class="fas fa-rupee-sign"></i> Financial Information</h4>
+
+                <div class="grid grid-cols-2">
+                    <div class="form-group">
+                        <label class="form-label">Annual Income (Rs.) *</label>
+                        <input type="number" class="form-input" id="income" required placeholder="1000000" step="10000">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Current Savings (Rs.) *</label>
+                        <input type="number" class="form-input" id="currentSavings" required placeholder="500000" step="10000">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2">
+                    <div class="form-group">
+                        <label class="form-label">Monthly Investment Capacity (Rs.)</label>
+                        <input type="number" class="form-input" id="monthlyInvestment" placeholder="10000" step="1000">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Existing Debt (Rs.)</label>
+                        <input type="number" class="form-input" id="debtAmount" placeholder="0" step="10000">
+                    </div>
+                </div>
+
+                <!-- Risk Tolerance -->
+                <h4 style="margin: 1.5rem 0 1rem; color: var(--text-secondary);"><i class="fas fa-chart-line"></i> Risk Tolerance *</h4>
+
+                <div class="risk-options" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                    <label class="risk-option" style="padding: 1.5rem; border: 2px solid var(--border-color); border-radius: 12px; cursor: pointer; text-align: center;">
+                        <input type="radio" name="riskTolerance" value="conservative" style="display: none;">
+                        <i class="fas fa-shield-alt" style="font-size: 2rem; color: var(--success); margin-bottom: 0.5rem; display: block;"></i>
+                        <strong>Conservative</strong>
+                        <p style="font-size: 0.75rem; color: var(--text-tertiary); margin-top: 0.5rem;">Low risk, stable returns (6-8% p.a.)</p>
+                    </label>
+                    <label class="risk-option" style="padding: 1.5rem; border: 2px solid var(--border-color); border-radius: 12px; cursor: pointer; text-align: center;">
+                        <input type="radio" name="riskTolerance" value="moderate" style="display: none;">
+                        <i class="fas fa-balance-scale" style="font-size: 2rem; color: var(--warning); margin-bottom: 0.5rem; display: block;"></i>
+                        <strong>Moderate</strong>
+                        <p style="font-size: 0.75rem; color: var(--text-tertiary); margin-top: 0.5rem;">Balanced risk & returns (10-12% p.a.)</p>
+                    </label>
+                    <label class="risk-option" style="padding: 1.5rem; border: 2px solid var(--border-color); border-radius: 12px; cursor: pointer; text-align: center;">
+                        <input type="radio" name="riskTolerance" value="aggressive" style="display: none;">
+                        <i class="fas fa-rocket" style="font-size: 2rem; color: var(--danger); margin-bottom: 0.5rem; display: block;"></i>
+                        <strong>Aggressive</strong>
+                        <p style="font-size: 0.75rem; color: var(--text-tertiary); margin-top: 0.5rem;">High risk, high potential (12-15% p.a.)</p>
+                    </label>
+                </div>
+
+                <!-- Investment Horizon -->
+                <h4 style="margin: 1.5rem 0 1rem; color: var(--text-secondary);"><i class="fas fa-clock"></i> Investment Horizon *</h4>
+
+                <div class="form-group">
+                    <label class="form-label">How long can you stay invested? (years)</label>
+                    <input type="range" class="form-input" id="investmentHorizon" min="1" max="30" value="10" style="width: 100%;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-tertiary);">
+                        <span>1 year</span>
+                        <span id="horizonValue" style="font-weight: 600; color: var(--primary-color);">10 years</span>
+                        <span>30 years</span>
+                    </div>
+                </div>
+
+                <!-- Financial Goals -->
+                <h4 style="margin: 1.5rem 0 1rem; color: var(--text-secondary);"><i class="fas fa-bullseye"></i> Financial Goals</h4>
+
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                    <label class="goal-checkbox" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer;">
+                        <input type="checkbox" name="goals" value="retirement">
+                        <i class="fas fa-umbrella-beach" style="color: var(--primary-color);"></i>
+                        <span>Retirement</span>
+                    </label>
+                    <label class="goal-checkbox" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer;">
+                        <input type="checkbox" name="goals" value="education">
+                        <i class="fas fa-graduation-cap" style="color: var(--secondary-color);"></i>
+                        <span>Education</span>
+                    </label>
+                    <label class="goal-checkbox" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer;">
+                        <input type="checkbox" name="goals" value="house">
+                        <i class="fas fa-home" style="color: var(--accent-blue);"></i>
+                        <span>House Purchase</span>
+                    </label>
+                    <label class="goal-checkbox" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer;">
+                        <input type="checkbox" name="goals" value="emergency_fund">
+                        <i class="fas fa-piggy-bank" style="color: var(--warning);"></i>
+                        <span>Emergency Fund</span>
+                    </label>
+                    <label class="goal-checkbox" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer;">
+                        <input type="checkbox" name="goals" value="wealth_building">
+                        <i class="fas fa-chart-line" style="color: var(--success);"></i>
+                        <span>Wealth Building</span>
+                    </label>
+                    <label class="goal-checkbox" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer;">
+                        <input type="checkbox" name="goals" value="tax_saving">
+                        <i class="fas fa-file-invoice-dollar" style="color: var(--accent-purple);"></i>
+                        <span>Tax Saving</span>
+                    </label>
+                </div>
+
+                <!-- Additional Info -->
+                <h4 style="margin: 1.5rem 0 1rem; color: var(--text-secondary);"><i class="fas fa-check-circle"></i> Additional Information</h4>
+
+                <div class="grid grid-cols-2">
+                    <label style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer;">
+                        <input type="checkbox" id="hasEmergencyFund">
+                        <span>I have an emergency fund (3-6 months expenses)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer;">
+                        <input type="checkbox" id="hasRetirementAccount">
+                        <span>I have a retirement account (EPF/NPS)</span>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg w-full" style="margin-top: 2rem;">
+                    <i class="fas fa-save"></i> Save Profile & Get Recommendations
+                </button>
+            </form>
+        </div>
+
+        <!-- Risk Profile Summary -->
+        <div>
+            <div class="card" style="position: sticky; top: 100px;">
+                <h3 style="margin-bottom: 1rem;"><i class="fas fa-chart-pie"></i> Your Risk Profile</h3>
+
+                <div id="riskProfileSummary" style="text-align: center; padding: 1rem;">
+                    <div id="riskMeter" style="font-size: 4rem; margin-bottom: 1rem;">
+                        <i class="fas fa-balance-scale" style="color: var(--warning);"></i>
+                    </div>
+                    <h2 id="riskProfileName" style="margin-bottom: 0.5rem;">Moderate</h2>
+                    <p id="riskDescription" style="color: var(--text-secondary); font-size: 0.875rem;">Complete your profile to see personalized analysis</p>
+                </div>
+
+                <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--border-color);">
+
+                <h4 style="margin-bottom: 1rem;">Recommended Allocation</h4>
+                <div id="allocationPreview">
+                    <div style="margin-bottom: 0.75rem;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.25rem;">
+                            <span>Equity</span>
+                            <span id="equityPct">50%</span>
+                        </div>
+                        <div class="progress"><div class="progress-bar" id="equityBar" style="width: 50%;"></div></div>
+                    </div>
+                    <div style="margin-bottom: 0.75rem;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.25rem;">
+                            <span>Debt</span>
+                            <span id="debtPct">35%</span>
+                        </div>
+                        <div class="progress"><div class="progress-bar" id="debtBar" style="width: 35%; background: var(--secondary-color);"></div></div>
+                    </div>
+                    <div style="margin-bottom: 0.75rem;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.25rem;">
+                            <span>Gold/Others</span>
+                            <span id="otherPct">15%</span>
+                        </div>
+                        <div class="progress"><div class="progress-bar" id="otherBar" style="width: 15%; background: var(--warning);"></div></div>
+                    </div>
+                </div>
+
+                <a href="{{ url_for('recommendations') }}" class="btn btn-outline w-full" style="margin-top: 1rem;">
+                    <i class="fas fa-lightbulb"></i> View Full Recommendations
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.risk-option:has(input:checked) {
+    border-color: var(--primary-color);
+    background: rgba(0, 208, 156, 0.1);
+}
+.goal-checkbox:has(input:checked) {
+    border-color: var(--primary-color);
+    background: rgba(0, 208, 156, 0.1);
+}
+</style>
+
+<script>
+// Investment horizon slider
+document.getElementById('investmentHorizon').addEventListener('input', (e) => {
+    document.getElementById('horizonValue').textContent = e.target.value + ' years';
+    updateRiskPreview();
+});
+
+// Risk tolerance selection
+document.querySelectorAll('input[name="riskTolerance"]').forEach(radio => {
+    radio.addEventListener('change', updateRiskPreview);
+});
+
+function updateRiskPreview() {
+    const riskTolerance = document.querySelector('input[name="riskTolerance"]:checked')?.value || 'moderate';
+    const horizon = parseInt(document.getElementById('investmentHorizon').value) || 10;
+
+    let profileName, description, icon, iconColor;
+    let equity, debt, other;
+
+    if (riskTolerance === 'conservative') {
+        profileName = 'Conservative';
+        description = 'Focus on capital preservation with stable returns';
+        icon = 'fa-shield-alt';
+        iconColor = 'var(--success)';
+        equity = 30;
+        debt = 55;
+        other = 15;
+    } else if (riskTolerance === 'aggressive') {
+        profileName = 'Aggressive';
+        description = 'Growth-focused with higher volatility tolerance';
+        icon = 'fa-rocket';
+        iconColor = 'var(--danger)';
+        equity = 75;
+        debt = 15;
+        other = 10;
+    } else {
+        profileName = 'Moderate';
+        description = 'Balanced approach for steady wealth creation';
+        icon = 'fa-balance-scale';
+        iconColor = 'var(--warning)';
+        equity = 50;
+        debt = 35;
+        other = 15;
+    }
+
+    // Adjust for horizon
+    if (horizon > 15) {
+        equity = Math.min(85, equity + 10);
+        debt = Math.max(10, debt - 10);
+    } else if (horizon < 5) {
+        equity = Math.max(20, equity - 15);
+        debt = Math.min(65, debt + 15);
+    }
+
+    document.getElementById('riskMeter').innerHTML = `<i class="fas ${icon}" style="color: ${iconColor};"></i>`;
+    document.getElementById('riskProfileName').textContent = profileName;
+    document.getElementById('riskDescription').textContent = description;
+
+    document.getElementById('equityPct').textContent = equity + '%';
+    document.getElementById('debtPct').textContent = debt + '%';
+    document.getElementById('otherPct').textContent = other + '%';
+
+    document.getElementById('equityBar').style.width = equity + '%';
+    document.getElementById('debtBar').style.width = debt + '%';
+    document.getElementById('otherBar').style.width = other + '%';
+}
+
+// Load existing profile
+async function loadProfile() {
+    try {
+        const profile = await apiCall('auth/profile');
+
+        if (profile.full_name) document.getElementById('fullName').value = profile.full_name;
+        if (profile.age) document.getElementById('age').value = profile.age;
+        if (profile.annual_income) document.getElementById('income').value = profile.annual_income;
+        if (profile.current_savings) document.getElementById('currentSavings').value = profile.current_savings;
+        if (profile.monthly_investment) document.getElementById('monthlyInvestment').value = profile.monthly_investment;
+        if (profile.debt_amount) document.getElementById('debtAmount').value = profile.debt_amount;
+        if (profile.investment_horizon) {
+            document.getElementById('investmentHorizon').value = profile.investment_horizon;
+            document.getElementById('horizonValue').textContent = profile.investment_horizon + ' years';
+        }
+
+        if (profile.risk_tolerance) {
+            const radio = document.querySelector(`input[name="riskTolerance"][value="${profile.risk_tolerance}"]`);
+            if (radio) radio.checked = true;
+        }
+
+        if (profile.goals) {
+            profile.goals.forEach(goal => {
+                const checkbox = document.querySelector(`input[name="goals"][value="${goal}"]`);
+                if (checkbox) checkbox.checked = true;
+            });
+        }
+
+        if (profile.has_emergency_fund) document.getElementById('hasEmergencyFund').checked = true;
+        if (profile.has_retirement_account) document.getElementById('hasRetirementAccount').checked = true;
+
+        updateRiskPreview();
+    } catch (error) {
+        console.log('No existing profile');
+    }
+}
+
+// Save profile
+document.getElementById('profileForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const goals = Array.from(document.querySelectorAll('input[name="goals"]:checked')).map(cb => cb.value);
+    const riskTolerance = document.querySelector('input[name="riskTolerance"]:checked')?.value;
+
+    if (!riskTolerance) {
+        showToast('Please select a risk tolerance level', 'error');
+        return;
+    }
+
+    const profile = {
+        full_name: document.getElementById('fullName').value,
+        age: parseInt(document.getElementById('age').value),
+        annual_income: parseFloat(document.getElementById('income').value),
+        current_savings: parseFloat(document.getElementById('currentSavings').value),
+        monthly_investment: parseFloat(document.getElementById('monthlyInvestment').value) || 0,
+        debt_amount: parseFloat(document.getElementById('debtAmount').value) || 0,
+        risk_tolerance: riskTolerance,
+        investment_horizon: parseInt(document.getElementById('investmentHorizon').value),
+        goals: goals,
+        has_emergency_fund: document.getElementById('hasEmergencyFund').checked,
+        has_retirement_account: document.getElementById('hasRetirementAccount').checked
+    };
+
+    try {
+        await apiCall('auth/profile', 'PUT', profile);
+        showToast('Profile saved successfully! Redirecting to recommendations...', 'success');
+
+        setTimeout(() => {
+            window.location.href = '/recommendations';
+        }, 1500);
+    } catch (error) {
+        console.error('Error saving profile:', error);
+        showToast('Error saving profile. Please try again.', 'error');
+    }
+});
+
+// Initialize
+loadProfile();
+updateRiskPreview();
+</script>
+{% endblock %}
